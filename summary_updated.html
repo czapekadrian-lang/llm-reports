@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anulowany Rejs: Interaktywne Centrum Decyzyjne</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is designed as a "Decision Support Dashboard" to guide the user from problem to solution. It avoids the linear structure of the source report. The architecture is: 1. Header summarizing the core problem. 2. A "Current Situation" block stating the unchangeable facts (cruise cancelled, flights active). 3. An interactive "Decision Hub" with three clear buttons for each scenario (A, B, C). This is the primary user interaction point. 4. A dynamic content area where details of the selected scenario are displayed, including a cost comparison chart. This task-oriented flow allows the user to actively compare options rather than passively read, which is optimal for decision-making under uncertainty. 5. A final, clear "Recommended Action Plan" to provide a direct path forward. This structure transforms a complex report into a focused, user-driven tool. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Comparing financial outcomes of Scenarios A, B, and C. -> Goal: Compare. -> Viz/Presentation: Interactive Bar Chart (Chart.js/Canvas). -> Interaction: The chart updates when the user clicks a scenario button, highlighting the selected option's cost against others. -> Justification: A visual comparison of costs is far more intuitive and impactful than reading numbers in a table, directly supporting the user's need to assess financial viability.
+        - Report Info: Step-by-step action plans for each scenario. -> Goal: Organize/Inform. -> Viz/Presentation: Styled HTML lists with icons (Unicode characters). -> Interaction: Displayed dynamically based on scenario selection. -> Justification: Checklists and clear steps are easy to follow and provide actionable guidance.
+        - Report Info: Recommended 3-phase action plan. -> Goal: Organize/Change. -> Viz/Presentation: Timeline-like structure using HTML/CSS/Tailwind. -> Interaction: Static, for clarity and emphasis. -> Justification: A timeline visually represents the sequence and timing of required actions, making the strategy clear and easy to internalize.
+        - Report Info: Pros and Cons for each scenario. -> Goal: Compare. -> Viz/Presentation: Two-column lists with Unicode icons (✔/✖). -> Interaction: Displayed dynamically. -> Justification: Simplifies complex trade-offs into easily digestible points, aiding comparison.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #333333;
+        }
+        .nav-button {
+            transition: all 0.3s ease;
+            border-bottom: 4px solid transparent;
+        }
+        .nav-button.active {
+            border-bottom-color: #0891b2; /* cyan-600 */
+            color: #0e7490; /* cyan-700 */
+        }
+        .nav-button:hover {
+            border-bottom-color: #67e8f9; /* cyan-300 */
+        }
+        .card {
+            background-color: #FFFFFF;
+            border: 1px solid #E5E7EB;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .phase-step {
+            border-left: 3px solid #0891b2;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        .phase-step::before {
+            content: '';
+            position: absolute;
+            left: -9px;
+            top: 0;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #0891b2;
+            border: 3px solid #FDFBF8;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-cyan-800 mb-2">Anulowany Rejs. Co Dalej?</h1>
+            <p class="text-lg text-gray-600">Interaktywne centrum decyzyjne, które pomoże Ci wybrać najlepszą strategię.</p>
+        </header>
+
+        <main>
+            <section id="situation" class="mb-12">
+                <div class="card p-6 md:p-8">
+                    <h2 class="text-2xl font-bold mb-4 text-center">Sytuacja Wyjściowa: Kluczowe Fakty</h2>
+                    <div class="grid md:grid-cols-2 gap-6 text-center">
+                        <div class="bg-red-50 border border-red-200 p-6 rounded-lg">
+                            <p class="text-5xl mb-2">🚢</p>
+                            <h3 class="text-xl font-semibold mb-1">Rejs Costa Anulowany</h3>
+                            <p class="text-gray-700">Rejs po Zatoce Perskiej (12-20.02.2026) został odwołany przez armatora.</p>
+                            <p class="mt-3 text-sm font-semibold text-red-700">Termin na decyzję o rekompensacie: 11.08.2025</p>
+                        </div>
+                        <div class="bg-green-50 border border-green-200 p-6 rounded-lg">
+                            <p class="text-5xl mb-2">✈️</p>
+                            <h3 class="text-xl font-semibold mb-1">Loty Wizzair Aktywne</h3>
+                            <p class="text-gray-700">Twoje bilety lotnicze Kraków - Abu Dhabi (koszt 5600 PLN) pozostają w mocy.</p>
+                             <p class="mt-3 text-sm font-semibold text-green-700">Anulacja z Twojej strony wiąże się z opłatą 65 EUR/bilet.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="decision-hub" class="mb-12">
+                <h2 class="text-3xl font-bold text-center mb-8">Centrum Decyzyjne: Wybierz i Porównaj Scenariusze</h2>
+                <div id="nav-buttons" class="flex justify-center border-b border-gray-200 mb-8 space-x-4 md:space-x-8">
+                    <button data-target="scenarioA" class="nav-button active text-lg font-semibold py-4 px-2">Scenariusz A: Inny Rejs</button>
+                    <button data-target="scenarioB" class="nav-button text-lg font-semibold py-4 px-2">Scenariusz B: Wakacje w ZEA</button>
+                    <button data-target="scenarioC" class="nav-button text-lg font-semibold py-4 px-2">Scenariusz C: Zmiana Kierunku</button>
+                </div>
+
+                <div id="scenarios-content">
+                </div>
+            </section>
+            
+            <section id="recommendation" class="mb-12">
+                <div class="card p-6 md:p-8">
+                    <h2 class="text-3xl font-bold text-center mb-8">Rekomendowany Plan Działania</h2>
+                    <div class="space-y-8">
+                        <div class="phase-step">
+                            <p class="text-sm font-semibold text-cyan-700">FAZA 1: NATYCHMIAST (do 10.08.2025)</p>
+                            <h3 class="text-xl font-bold mt-1">Odzyskaj Środki od Costa</h3>
+                            <p class="text-gray-700 mt-2">Złóż formalny wniosek o **pełny zwrot gotówkowy** wpłaconej zaliczki. Stanowczo odrzuć oferty kredytów (FCC/OBC) i zniżek. To daje Ci maksymalną elastyczność finansową.</p>
+                        </div>
+                        <div class="phase-step">
+                            <p class="text-sm font-semibold text-cyan-700">FAZA 2: CIERPLIWOŚĆ (do ok. Grudnia 2025)</p>
+                            <h3 class="text-xl font-bold mt-1">Monitoruj Loty Wizzair</h3>
+                            <p class="text-gray-700 mt-2">Przyjmij strategię "wait and see". **Nie anuluj biletów z własnej inicjatywy.** Regularnie sprawdzaj status rezerwacji. Odwołanie lotu przez Wizzair (pełny zwrot) jest dla Ciebie znacznie korzystniejsze niż anulacja z Twojej strony (częściowy zwrot po potrąceniu opłat).</p>
+                        </div>
+                        <div class="phase-step">
+                            <p class="text-sm font-semibold text-cyan-700">FAZA 3: DECYZJA (Styczeń 2026)</p>
+                            <h3 class="text-xl font-bold mt-1">Wybierz Finalne Wakacje</h3>
+                            <p class="text-gray-700 mt-2">Gdy sytuacja z lotami będzie jasna, podejmij ostateczną decyzję. Jeśli loty się odbędą, wybierz między Scenariuszem A i B. Jeśli zostaną anulowane, masz pełną swobodę planowania od zera.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="text-center text-sm text-gray-500 mt-12">
+            <p>Aplikacja wygenerowana na podstawie analizy sytuacji z dnia 29 lipca 2025. Wszystkie koszty są szacunkowe.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        const scenariosData = {
+            scenarioA: {
+                title: 'Scenariusz A: Rejs po Zatoce Perskiej z Innym Armatorem',
+                description: 'Ten scenariusz zakłada realizację pierwotnego planu wakacyjnego, ale ze zmianą operatora na MSC Cruises. Wykorzystujesz już kupione bilety lotnicze i cieszysz się rejsem w niemal identycznym terminie.',
+                pros: [
+                    'Realizacja pierwotnego marzenia o rejsie w ZEA.',
+                    'Pełne wykorzystanie już zakupionych biletów lotniczych (o wartości 5600 PLN).',
+                    'Porównywalny lub nawet niższy koszt w stosunku do pierwotnej rezerwacji.'
+                ],
+                cons: [
+                    'Konieczność dokonania nowej rezerwacji i zaufania innemu armatorowi.',
+                    'Ceny rejsu mogą ulec zmianie bliżej terminu.'
+                ],
+                cost: {
+                    label: 'Szacowany koszt rejsu MSC',
+                    value: 2600,
+                    range: '2100 - 3100 EUR'
+                },
+                actionPlan: [
+                    'Zażądaj zwrotu gotówki od Costa Cruises (do 11.08.2025).',
+                    'Monitoruj status lotów Wizzair.',
+                    'Po potwierdzeniu lotów, zarezerwuj rejs na MSC Euribia (11-18.02.2026).'
+                ]
+            },
+            scenarioB: {
+                title: 'Scenariusz B: Wakacje Stacjonarne w Zjednoczonych Emiratach Arabskich',
+                description: 'Ta opcja to całkowita zmiana koncepcji. Zamiast rejsu, organizujesz fascynujący, 8-dniowy pobyt lądowy, zwiedzając atrakcje Dubaju i Abu Dhabi. To większa elastyczność i różnorodność doświadczeń.',
+                pros: [
+                    'Ogromna różnorodność atrakcji dla całej rodziny.',
+                    'Pełna elastyczność i kontrola nad planem każdego dnia.',
+                    'Możliwość głębszego poznania kultury i atrakcji regionu.'
+                ],
+                cons: [
+                    'Wymaga więcej samodzielnego planowania i rezerwacji (hotele, auto).',
+                    'Całkowity koszt może być nieco wyższy niż rejs (ale z większą kontrolą).'
+                ],
+                cost: {
+                    label: 'Szacowany koszt pobytu w ZEA',
+                    value: 3200,
+                    range: 'ok. 3200 EUR (z możliwością optymalizacji)'
+                },
+                actionPlan: [
+                    'Zażądaj zwrotu gotówki od Costa Cruises (do 11.08.2025).',
+                    'Monitoruj status lotów Wizzair.',
+                    'Po potwierdzeniu lotów, zarezerwuj hotele, samochód i zaplanuj zwiedzanie.'
+                ]
+            },
+            scenarioC: {
+                title: 'Scenariusz C: Zmiana Kierunku z Ofertą Costa',
+                description: 'Ten scenariusz polega na skorzystaniu z alternatywnej oferty Costa i anulowaniu lotów do Abu Dhabi. Jest to opcja najmniej korzystna finansowo, ponieważ prowadzi do straty na biletach lotniczych.',
+                pros: [
+                    'Potencjalna zniżka na rejs od Costa (pozorna korzyść).',
+                    'Możliwość odzyskania części kosztów biletów (ok. 3364 PLN z 5600 PLN).'
+                ],
+                cons: [
+                    'Utrata 520 EUR (ok. 2236 PLN) w formie bezzwrotnych opłat za anulowanie biletów lotniczych.',
+                    'Konieczność zakupu nowych, drogich biletów lotniczych do innej destynacji.',
+                    'Najwyższy całkowity koszt i złożoność logistyczna.'
+                ],
+                cost: {
+                    label: 'Szacowany koszt zmiany kierunku',
+                    value: 3520,
+                    range: 'Nowy rejs i loty (ok. 3000 EUR) + opłata za anulację (520 EUR)'
+                },
+                actionPlan: [
+                    'Ten scenariusz jest ZDECYDOWANIE NIEREKOMENDOWANY.',
+                    'Rozważ go TYLKO, jeśli Wizzair odwoła loty i zwróci Ci 100% pieniędzy za bilety.',
+                    'W przeciwnym wypadku, unikaj tej finansowej pułapki.'
+                ]
+            }
+        };
+
+        const scenariosContent = document.getElementById('scenarios-content');
+        const navButtons = document.querySelectorAll('.nav-button');
+        let costChart = null;
+
+        function renderScenario(scenarioId) {
+            const data = scenariosData[scenarioId];
+            if (!data) return;
+
+            scenariosContent.innerHTML = `
+                <div class="card p-6 md:p-8 animate-fade-in">
+                    <div class="grid lg:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-2xl font-bold mb-4">${data.title}</h3>
+                            <p class="text-gray-700 mb-6">${data.description}</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <h4 class="font-semibold mb-2">Plusy ✔️</h4>
+                                    <ul class="list-inside space-y-1 text-sm">
+                                        ${data.pros.map(pro => `<li class="flex items-start"><span class="text-green-500 mr-2">✔</span><span>${pro}</span></li>`).join('')}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-2">Minusy ✖️</h4>
+                                    <ul class="list-inside space-y-1 text-sm">
+                                        ${data.cons.map(con => `<li class="flex items-start"><span class="text-red-500 mr-2">✖</span><span>${con}</span></li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <h4 class="font-semibold mb-2">Plan Działania 📝</h4>
+                            <ul class="list-inside space-y-2">
+                                ${data.actionPlan.map(step => `<li class="flex items-start"><span class="text-cyan-600 mr-2">›</span><span>${step}</span></li>`).join('')}
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-4 text-center">Wizualizacja Kosztów (poza lotami do ZEA)</h4>
+                            <div class="chart-container">
+                                <canvas id="costChart"></canvas>
+                            </div>
+                             <p class="text-center text-sm text-gray-600 mt-2">Wybrany scenariusz: <strong>${data.cost.range}</strong></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            createOrUpdateChart(scenarioId);
+        }
+
+        function createOrUpdateChart(selectedScenarioId) {
+            const chartData = {
+                labels: ['Scenariusz A', 'Scenariusz B', 'Scenariusz C'],
+                datasets: [{
+                    label: 'Szacowany koszt w EUR',
+                    data: [
+                        scenariosData.scenarioA.cost.value,
+                        scenariosData.scenarioB.cost.value,
+                        scenariosData.scenarioC.cost.value
+                    ],
+                    backgroundColor: [
+                        'rgba(8, 145, 178, 0.6)', // cyan-600
+                        'rgba(8, 145, 178, 0.6)',
+                        'rgba(8, 145, 178, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(8, 145, 178, 1)',
+                        'rgba(8, 145, 178, 1)',
+                        'rgba(8, 145, 178, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            };
+
+            const selectedIndex = Object.keys(scenariosData).indexOf(selectedScenarioId);
+            
+            if (selectedScenarioId === 'scenarioA') {
+                 chartData.datasets[0].backgroundColor[selectedIndex] = 'rgba(5, 150, 105, 0.6)'; // emerald-600
+                 chartData.datasets[0].borderColor[selectedIndex] = 'rgba(5, 150, 105, 1)';
+            }
+             else if (selectedScenarioId === 'scenarioB') {
+                 chartData.datasets[0].backgroundColor[selectedIndex] = 'rgba(217, 119, 6, 0.6)'; // amber-600
+                 chartData.datasets[0].borderColor[selectedIndex] = 'rgba(217, 119, 6, 1)';
+            }
+            else if (selectedScenarioId === 'scenarioC') {
+                 chartData.datasets[0].backgroundColor[selectedIndex] = 'rgba(220, 38, 38, 0.6)'; // red-600
+                 chartData.datasets[0].borderColor[selectedIndex] = 'rgba(220, 38, 38, 1)';
+            }
+
+
+            const ctx = document.getElementById('costChart').getContext('2d');
+            
+            if(costChart) {
+                costChart.destroy();
+            }
+
+            costChart = new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        let value = context.parsed.y;
+                                        if (context.label === 'Scenariusz C') {
+                                            return `Całkowity koszt: ${new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(value)}`;
+                                        }
+                                        label += new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(value);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    return value + ' EUR';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    const label = this.getLabelForValue(value);
+                                    if(label.length > 16) {
+                                        return label.split(' ');
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        navButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                navButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                const target = button.getAttribute('data-target');
+                renderScenario(target);
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderScenario('scenarioA');
+        });
+
+    </script>
+</body>
+</html>
